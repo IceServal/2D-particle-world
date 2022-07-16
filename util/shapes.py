@@ -31,12 +31,6 @@ class Point(Shape):
         self.x += x
         self.y += y
 
-    def scale(self, ratio: float) -> None:
-        pass
-
-    def area(self) -> float:
-        return 0.0
-
 class Vector(Shape):
     def __init__(self, x: float, y: float):
         self.x = x
@@ -51,8 +45,8 @@ class Vector(Shape):
         self.y += y
 
     def scale(self, ratio: float) -> None:
-        self.x *= x
-        self.y *= y
+        self.x *= ratio
+        self.y *= ratio
 
     def modulus(self) -> float:
         return util.ops.sqrt(util.ops.pow2(self.x) + util.ops.pow2(self.y))
@@ -99,9 +93,6 @@ class Rectangle(Shape):
         self.center.shift(x, y)
 
     def scale(self, ratio: float) -> None:
-        if ratio < 0.0:
-            ratio = 0.0
-
         self.width  *= ratio
         self.height *= ratio
 
@@ -132,9 +123,6 @@ class Circle(Shape):
         self.center.y += y
 
     def scale(self, ratio: float) -> None:
-        if ratio < 0.0:
-            ratio = 0.0
-
         self.radius *= ratio
 
     def area(self) -> float:

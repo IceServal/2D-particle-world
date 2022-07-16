@@ -1,138 +1,73 @@
-import time
-import tkinter
-
 import resource.constants
-import resource.mesh
+import resource.particles
 import util.shapes
 
 
-class World:
-    def __init__(self, width: int, height: int):
-        self.width  = width
-        self.height = height
+class In_World_Particle:
+    def __init__(self, particle: resource.particles.Particle):
+        self.particle = particle
+        self.force_queue = []
 
-        self.board = tkinter.Tk()
-        self.board.title('2D ball world')
+    def add_force(self, force: util.shapes.Vector) -> None:
+        self.force_queue.append(force)
 
-        canvas_width  = width * resource.constants.SCALE
-        canvas_height = height * resource.constants.SCALE
-        self.canvas = tkinter.Canvas( self.board, width=canvas_width, height=canvas_height, bg='ivory')
-        self.canvas.pack()
-
-        self.mesh_array = []
-
-    def add_mesh(self, mesh: resource.mesh.Mesh) -> None:
-        self.mesh_array.append(mesh)
-
-    def mainloop(self) -> None:
-        for mesh in self.mesh_array:
-            mesh.set_canvas(self.canvas)
-            mesh.create()
-
-        while True:
-            time.sleep(resource.constants.DELTA_TIME)
-
-            self._update()
-            self._render()
-
-    def _update(self) -> None:
-        ''' mesh update '''
-        self._ball_gravity()
-        self._ball_collide_wall()
-        self._ball_collide_ball()
-        self._ball_shift()
-
-    def _render(self) -> None:
-        ''' mesh render '''
-        for mesh in self.mesh_array:
-            mesh.draw()
-
-        self.canvas.update_idletasks()
-        self.canvas.update()
-
-    def _ball_gravity(self) -> None:
-        # need add bit condition
-        delta_y_speed = resource.constants.GRAVITY * resource.constants.DELTA_TIME
-        for mesh in self.mesh_array:
-            mesh.ball.velocity.shift(0.0, delta_y_speed)
-
-    def _ball_collide_wall(self) -> None:
+    def region_constrain(self) -> None:
         # need add wall resource
         # need add bit condition
-        for mesh in self.mesh_array:
-            if  False \
-                or (mesh.ball.center.x + mesh.ball.radius > self.width and mesh.ball.velocity.x > 0.0) \
-                or (mesh.ball.center.x - mesh.ball.radius < 0.0 and mesh.ball.velocity.x < 0.0) \
-            :
-                mesh.ball.velocity.x = -mesh.ball.velocity.x
-            if False \
-                or (mesh.ball.center.y + mesh.ball.radius > self.height and mesh.ball.velocity.y > 0.0) \
-                or (mesh.ball.center.y - mesh.ball.radius < 0.0 and mesh.ball.velocity.y < 0.0) \
-            :
-                mesh.ball.velocity.y = -mesh.ball.velocity.y
+        if  False \
+            or (self.particle.center.x + self.particle.radius > 8.0 and self.particle.velocity.x > 0.0) \
+            or (self.particle.center.x - self.particle.radius < 0.0 and self.particle.velocity.x < 0.0) \
+        :
+            self.particle.velocity.x = -self.particle.velocity.x
+        if False \
+            or (self.particle.center.y + self.particle.radius > 8.0 and self.particle.velocity.y > 0.0) \
+            or (self.particle.center.y - self.particle.radius < 0.0 and self.particle.velocity.y < 0.0) \
+        :
+            self.particle.velocity.y = -self.particle.velocity.y
 
-    def _ball_collide_ball(self) -> None:
-        # need add bit condition
-        for i, m1 in enumerate(self.mesh_array):
-            for j, m2 in enumerate(self.mesh_array[(i + 1):]):
-                b1 = m1.ball
-                b2 = m2.ball
+    def force_analyze(self, delta_time: float) -> None:
+        resultant_force = util.shapes.Vector(0.0, 0.0)
+        for force in self.force_queue:
+            resultant_force.shift(force.x, force.y)
 
-                delta_position = util.shapes.Vector(
-                    b2.center.x - b1.center.x,
-                    b2.center.y - b1.center.y
-                )
-                delta_velocity = util.shapes.Vector(
-                    b2.velocity.x - b1.velocity.x,
-                    b2.velocity.y - b1.velocity.y
-                )
-                if True \
-                    and ((delta_position.x * delta_velocity.x) >= 0) \
-                    and ((delta_position.y * delta_velocity.y) >= 0) \
-                :
+        acceleration = util.shapes.Vector(
+            resultant_force.x / self.particle.mass,
+            resultant_force.y / self.particle.mass
+        )
+        acceleration.shift(0.0, resource.constants.GRAVITY)
+
+        self.particle.velocity.shift(acceleration.x * delta_time, acceleration.y * delta_time)
+        self.force_queue.clear()
+
+    def shift(self, delta_time: float) -> None:
+        delta_position   = util.shapes.Vector(0.0, 0.0)
+        delta_position.x = self.particle.velocity.x * delta_time
+        delta_position.y = self.particle.velocity.y * delta_time
+
+        self.particle.shift(delta_position.x, delta_position.y)
+
+class World:
+    def __init__(self):
+        self.in_world_particle_queue = []
+
+    def add_particle(self, particle: resource.particles.Particle) -> None:
+        self.in_world_particle_queue.append(In_World_Particle(particle))
+
+    def inspect(self) -> resource.particles.Particle:
+        for iw_particle in self.in_world_particle_queue:
+            yield iw_particle.particle
+
+    def resolve(self, delta_time: float) -> None:
+        for iwp1 in self.in_world_particle_queue:
+            for iwp2 in self.in_world_particle_queue:
+                if iwp1 is iwp2:
                     continue
 
-                distance = delta_position.modulus()
-                if distance > (m1.ball.radius + m2.ball.radius):
-                    continue
-                if distance == 0.0:
-                    continue
-                # need fix bug condition
+                iwp1.force_queue.append(iwp2.particle.interact(iwp1.particle))
+                iwp2.force_queue.append(iwp1.particle.interact(iwp2.particle))
 
-                sin_theta = delta_position.y / distance
-                cos_theta = delta_position.x / distance
-
-                b1_normal_velocity  =   b1.velocity.x * cos_theta \
-                                      + b1.velocity.y * sin_theta
-                b1_tangent_velocity =   b1.velocity.x * sin_theta \
-                                      + b1.velocity.y * cos_theta
-                b2_normal_velocity  =   b2.velocity.x * cos_theta \
-                                      + b2.velocity.y * sin_theta
-                b2_tangent_velocity =   b2.velocity.x * sin_theta \
-                                      + b2.velocity.y * cos_theta
-
-                b1_momentum = b1.mass * b1_normal_velocity
-                b2_momentum = b2.mass * b2_normal_velocity
-                denom = b1.mass + b2.mass
-                b1_nom = (b1.mass - b2.mass) * b1_normal_velocity + 2 * b2_momentum
-                b2_nom = (b2.mass - b1.mass) * b2_normal_velocity + 2 * b1_momentum
-                b1_normal_velocity = b1_nom / denom
-                b2_normal_velocity = b2_nom / denom
-
-                m1.ball.velocity.x =   b1_normal_velocity  * cos_theta \
-                                     + b1_tangent_velocity * sin_theta
-                m1.ball.velocity.y =   b1_normal_velocity  * sin_theta \
-                                     + b1_tangent_velocity * cos_theta
-                m2.ball.velocity.x =   b2_normal_velocity  * cos_theta \
-                                     + b2_tangent_velocity * sin_theta
-                m2.ball.velocity.y =   b2_normal_velocity  * sin_theta \
-                                     + b2_tangent_velocity * cos_theta
-
-    def _ball_shift(self) -> None:
-        for mesh in self.mesh_array:
-            delta_position   = util.shapes.Vector(0.0, 0.0)
-            delta_position.x = mesh.ball.velocity.x * resource.constants.DELTA_TIME
-            delta_position.y = mesh.ball.velocity.y * resource.constants.DELTA_TIME
-
-            mesh.shift(delta_position.x, delta_position.y)
+        for iw_particle in self.in_world_particle_queue:
+            iw_particle.shift(delta_time)
+            iw_particle.force_analyze(delta_time)
+            iw_particle.region_constrain()
 
