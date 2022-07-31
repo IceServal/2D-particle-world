@@ -1,5 +1,6 @@
 import resource.constants
 import resource.particles
+import resource.boundaries
 import util.shapes
 
 
@@ -11,19 +12,8 @@ class In_World_Particle:
     def add_force(self, force: util.shapes.Vector) -> None:
         self.force_queue.append(force)
 
-    def region_constrain(self) -> None:
-        # need add wall resource
-        # need add bit condition
-        if  False \
-            or (self.particle.center.x + self.particle.radius > 8.0 and self.particle.velocity.x > 0.0) \
-            or (self.particle.center.x - self.particle.radius < 0.0 and self.particle.velocity.x < 0.0) \
-        :
-            self.particle.velocity.x = -self.particle.velocity.x
-        if False \
-            or (self.particle.center.y + self.particle.radius > 8.0 and self.particle.velocity.y > 0.0) \
-            or (self.particle.center.y - self.particle.radius < 0.0 and self.particle.velocity.y < 0.0) \
-        :
-            self.particle.velocity.y = -self.particle.velocity.y
+    def region_constrain(self, boundary: resource.boundaries.Boundary) -> None:
+        boundary.influence(self.particle)
 
     def force_analyze(self, delta_time: float) -> None:
         resultant_force = util.shapes.Vector(0.0, 0.0)
@@ -47,13 +37,19 @@ class In_World_Particle:
         self.particle.shift(delta_position.x, delta_position.y)
 
 class World:
-    def __init__(self):
+    def __init__(self, color: str):
+        self.color = color
+
         self.in_world_particle_queue = []
+        self.boundaries = []
 
     def add_particle(self, particle: resource.particles.Particle) -> None:
         self.in_world_particle_queue.append(In_World_Particle(particle))
 
-    def inspect(self) -> resource.particles.Particle:
+    def add_boundary(self, boundary: resource.boundaries.Boundary) -> None:
+        self.boundaries.append(boundary)
+
+    def inspect_particles(self) -> resource.particles.Particle:
         for iw_particle in self.in_world_particle_queue:
             yield iw_particle.particle
 
@@ -63,11 +59,13 @@ class World:
                 if iwp1 is iwp2:
                     continue
 
-                iwp1.force_queue.append(iwp2.particle.interact(iwp1.particle))
-                iwp2.force_queue.append(iwp1.particle.interact(iwp2.particle))
+                iwp1.force_queue.append(iwp2.particle.influence(iwp1.particle))
+                iwp2.force_queue.append(iwp1.particle.influence(iwp2.particle))
 
         for iw_particle in self.in_world_particle_queue:
             iw_particle.shift(delta_time)
             iw_particle.force_analyze(delta_time)
-            iw_particle.region_constrain()
+
+            for bound in self.boundaries:
+                iw_particle.region_constrain(bound)
 

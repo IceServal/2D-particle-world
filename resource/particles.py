@@ -1,5 +1,5 @@
-import util.shapes
 import resource.constants
+import util.shapes
 
 
 class Particle(util.shapes.Circle):
@@ -10,18 +10,18 @@ class Particle(util.shapes.Circle):
         , center: util.shapes.Point
         , radius: float
         , mass: float
-        , color: str
         , velocity: util.shapes.Vector
+        , color: str
     ):
         super().__init__(center, radius)
 
         self.mass = mass
-        self.color = color
         self.velocity = velocity
-        
-    def interact(self, other) -> util.shapes.Vector:
+        self.color = color
+
+    def influence(self, other) -> util.shapes.Vector:
         force = util.shapes.Vector(0.0, 0.0)
-        
+
         contact_distance = other.radius + self.radius
 
         delta_position = util.shapes.Vector(

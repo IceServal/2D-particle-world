@@ -15,6 +15,9 @@ class Shape:
     def scale(self, ratio: float) -> None:
         pass
 
+    def rotate(self, angle: float) -> None:
+        pass
+
     def area(self) -> float:
         return 0.0
 
@@ -48,8 +51,51 @@ class Vector(Shape):
         self.x *= ratio
         self.y *= ratio
 
+    def rotate(self, angle: float) -> None:
+        pass
+
     def modulus(self) -> float:
         return util.ops.sqrt(util.ops.pow2(self.x) + util.ops.pow2(self.y))
+
+class Line(Shape):
+    def __init__(self, point1: Point, point2: Point):
+        if (point1.x == point2.x) and (point1.y == point2.y):
+            point2.x += 1.0
+            point2.y += 1.0
+
+        self.point1 = point1
+        self.point2 = point2
+
+        self.x1 = point1.x
+        self.y1 = point1.y
+        self.x2 = point2.x
+        self.y2 = point2.y
+
+        if self.x1 == self.x2:
+            self.x_coef = 1.0
+            self.y_coef = 0.0
+            self.constant = -self.x1
+        else:
+            self.x_coef = -((self.y2 - self.y1) / (self.x2 - self.x1))
+            self.y_coef = 1.0
+            self.constant = -((self.x_coef * self.x1) + (self.y_coef * self.y1))
+
+        self.center = Point(
+            util.ops.mean2(self.x1, self.x2),
+            util.ops.mean2(self.y1, self.y2)
+        )
+
+    def deploy(self, x: float, y: float) -> None:
+        pass
+
+    def shift(self, x: float, y: float) -> None:
+        pass
+
+    def scale(self, ratio: float) -> None:
+        pass
+
+    def rotate(self, angle: float, center: Point) -> None:
+        pass
 
 class Rectangle(Shape):
     def __init__(self, left_up: Point, right_bottom: Point):
